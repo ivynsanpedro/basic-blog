@@ -38,8 +38,25 @@ class Handler(webapp2.RequestHandler):
 
 class MainHandler(webapp2.RequestHandler):
     def get(self):
-        self.write('Hello world!')
+        self.write('Hello Blog!')
+
+class NewPostHandler(Handler):
+	def get(self):
+		self.render("newpost.html")
+
+	def post(self):
+		subject = self.request.get("subject")
+		content = self.request.get("content")
+		if subject and content:
+			blog = Blog(subject = subject, content = content)
+			blog.put()
+			id = blog.key().id()
+			self.redirect("/blog/%d" % id)
+		else:
+			error = "Subject and Content, please!"
+			self.render("newpost.html", subject=subject, content=content, error=error)
 
 app = webapp2.WSGIApplication([
-    ('/', MainHandler)
+    ('/blog', MainHandler),
+    ('/blog/newpost', NewPostHandler)
 ], debug=True)
