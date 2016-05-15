@@ -44,6 +44,10 @@ class Blog(db.Model):
 class MainHandler(Handler):
     def get(self):
         self.write('Hello Blog!')
+class BlogHandler(Handler):
+	def get(self, blog_id):
+		blog = Blog.get_by_id(int(blog_id))
+		self.render("blog.html", blog = blog)
 
 class NewPostHandler(Handler):
 	def get(self):
@@ -63,5 +67,6 @@ class NewPostHandler(Handler):
 
 app = webapp2.WSGIApplication([
     ('/blog', MainHandler),
-    ('/blog/newpost', NewPostHandler)
+    ('/blog/newpost', NewPostHandler),
+    ('/blog/(\d+)', BlogHandler)
 ], debug=True)
