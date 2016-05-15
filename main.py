@@ -43,7 +43,9 @@ class Blog(db.Model):
 
 class MainHandler(Handler):
     def get(self):
-        self.write('Hello Blog!')
+    	blogs = db.GqlQuery("SELECT * FROM Blog ORDER BY created DESC")
+        self.render("front.html", blogs = blogs)
+
 class BlogHandler(Handler):
 	def get(self, blog_id):
 		blog = Blog.get_by_id(int(blog_id))
