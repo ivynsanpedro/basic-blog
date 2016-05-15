@@ -36,7 +36,12 @@ class Handler(webapp2.RequestHandler):
 	def render(self, template, **kw):
 		self.write(self.render_str(template, **kw))
 
-class MainHandler(webapp2.RequestHandler):
+class Blog(db.Model):
+	subject = db.StringProperty(required = True)
+	content = db.TextProperty(required = True)
+	created = db.DateTimeProperty(auto_now_add = True)
+
+class MainHandler(Handler):
     def get(self):
         self.write('Hello Blog!')
 
