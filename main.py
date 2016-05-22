@@ -18,13 +18,42 @@ import os
 
 import webapp2
 import jinja2
-
+import re
 import hmac
+import random
+import string
+import hashlib
+ 
 from google.appengine.ext import db
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
 	autoescape = True)
+
+USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
+def valid_username(username):
+	return USER_RE.match(username)
+
+PASSWORD_RE = re.compile(r"^.{3,20}$")
+def valid_password(password):
+	return PASSWORD_RE.match(password)
+
+EMAIL_RE = re.compile(r"^[\S]+@[\S]+.[\S]+$")
+def valid_email(email):
+	return EMAIL_RE.match(email)
+
+def make_salt():
+	return ''.join(random.choice(string.letters) for x in xrange(5))
+
+def make_pw_hash(name, pw, salt = None):
+	if not salt:
+		salt = make_salt()
+	h = hashlib.sha256(name + pw + salt).hexdigest()
+	return '%s,%s' % (h, salt)
+
+def valid_pw(name, pw, h):
+	salt = h.split(',')[1]
+	return h == make_pw_hash(name, pw, salt)
 
 class Handler(webapp2.RequestHandler):
 	def write(self, *a, **kw):
@@ -41,6 +70,11 @@ class Blog(db.Model):
 	subject = db.StringProperty(required = True)
 	content = db.TextProperty(required = True)
 	created = db.DateTimeProperty(auto_now_add = True)
+
+class User(db.Model):
+	username = db.StringProperty(required = True)
+	password = db.StringProperty(required = True)
+	email = db.StringProperty()
 
 class MainHandler(Handler):
     def get(self):
@@ -67,6 +101,62 @@ class NewPostHandler(Handler):
 		else:
 			error = "Subject and Content, please!"
 			self.render("newpost.html", subject=subject, content=content, error=error)
+
+class SignupHandler(Handler):
+	def get(self):
+		self.render("signup.html")
+
+	def checkUsername(self, username):
+		user = db.GqlQuery("SELECT * FROM User WHERE username = '%s'" % username).get()
+		print user
+		if user:
+			return user.username
+
+	def post(self):
+		username = self.request.get("username")
+		password = self.request.get("password")
+		verify = self.request.get("verify")
+		email = self.request.get("email")
+		
+		isValidUsername = valid_username(username)
+		if not isValidUsername:
+			username_error = "That's not a valid username"
+		elif not self.checkUsername(username):
+			username_error = "That user already exists"
+		else:
+			username_error = ""
+		
+		isValidPassword = valid_password(password)
+		if not isValidPassword:
+			password_error = "That wasn't a valid password"
+		else:
+			password_error = ""
+		isValidVerify = valid_password(verify)
+		if not isValidVerify:
+			verify_error = "That wasn't a valid verify password"
+		else:
+			verify_error = ""
+
+		if isValidPassword and isValidVerify and password != verify:
+			isValidVerify = False
+			verify_error = "Your passwords didn't match"
+
+		isValidEmail = not email or valid_email(email)
+		if isValidEmail:
+			email_error = "Not a valid email"
+		else:
+			email_error = ""
+		if isValidUsername and isValidPassword and isValidVerify and isValidEmail:
+			h = make_pw_hash(username, password)
+			user = User(username=username, password = h, email = email)
+			user.put()
+			id = user.key().id()
+			new_cookie_val = make_secure_val(str(id))
+			self.response.headers.add_header('Set-Cookie', 'user_id=%s' % new_cookie_val)
+			self.redirect("/blog/welcome")
+		else:
+			self.render("signup.html", username=username, username_error=username_error, 
+				password_error=password_error, verify_error=verify_error, email_error=email_error)
 
 class WelcomeHandler(Handler):
 	def get(self):
@@ -119,5 +209,7 @@ app = webapp2.WSGIApplication([
     ('/blog', MainHandler),
     ('/blog/newpost', NewPostHandler),
     ('/blog/(\d+)', BlogHandler),
+    ('/blog/signup', SignupHandler),
+    ('/blog/welcome', WelcomeHandler),
     ('/blog/cookies', CookiesHandler)
 ], debug=True)
