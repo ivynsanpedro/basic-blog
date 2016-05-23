@@ -88,6 +88,7 @@ class User(db.Model):
 	email = db.StringProperty()
 
 last_queried = datetime.datetime.now()
+blogs_last_queried = {}
 
 def top_blogs(update = False):
 	key = 'top'
@@ -104,6 +105,19 @@ def top_blogs(update = False):
 		seconds = (datetime.datetime.now() - last_queried).seconds
 
 	return blogs, seconds
+
+def blog_by_id(blog_id):
+	key = str(blog_id)
+	blog = memcache.get(key)
+	if blog is None:
+		blog = Blog.get_by_id(int(blog_id))
+		blogs_last_queried[key] = datetime.datetime.now()
+		seconds = 0
+		memcache.set(key, blog)
+	else:
+		seconds = (datetime.datetime.now() - blogs_last_queried[key]).seconds
+
+	return blog, seconds
 
 class MainHandler(Handler):
     def get(self):
@@ -123,8 +137,8 @@ class BlogsJsonHandler(Handler):
 
 class BlogHandler(Handler):
 	def get(self, blog_id):
-		blog = Blog.get_by_id(int(blog_id))
-		self.render("blog.html", blog = blog)
+		blog, seconds = blog_by_id(int(blog_id))
+		self.render("blog.html", blog = blog, seconds= seconds)
 
 class BlogJsonHandler(Handler):
 	def get(self, blog_id):
