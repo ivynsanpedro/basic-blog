@@ -108,7 +108,6 @@ class SignupHandler(Handler):
 
 	def checkUsername(self, username):
 		user = db.GqlQuery("SELECT * FROM User WHERE username = '%s'" % username).get()
-		print user
 		if user:
 			return user.username
 
@@ -176,6 +175,22 @@ class WelcomeHandler(Handler):
 		user = User.get_by_id(int(user_id))
 		return user.username
 
+class LoginHandler(Handler):
+	def get(self):
+		self.render('login.html')
+	def post(self):
+		username = self.request.get('username')
+		password = self.request.get('password')
+		user = db.GqlQuery("SELECT * FROM User WHERE username = '%s'" % username).get()
+		if user and	valid_pw(username, password, user.password):
+			id = user.key().id()
+			new_cookie_val = make_secure_val(str(id))
+			self.response.headers.add_header('Set-Cookie', 'user_id=%s' % new_cookie_val)
+			self.redirect("/blog/welcome")
+		else:
+			error = "Invalid login"
+			self.render("login.html", username=username, error=error)
+
 SECRET = 'imsosecret'
 def hash_str(s):
 	return hmac.new(SECRET, s).hexdigest()
@@ -211,5 +226,6 @@ app = webapp2.WSGIApplication([
     ('/blog/(\d+)', BlogHandler),
     ('/blog/signup', SignupHandler),
     ('/blog/welcome', WelcomeHandler),
-    ('/blog/cookies', CookiesHandler)
+    ('/blog/cookies', CookiesHandler),
+    ('/blog/login', LoginHandler)
 ], debug=True)
