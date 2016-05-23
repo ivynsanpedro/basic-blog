@@ -91,6 +91,7 @@ class MainHandler(Handler):
 
 class BlogsJsonHandler(Handler):
 	def get(self):
+		self.response.headers['Content-Type'] = 'application/json; charset=UTF-8'
 		blogs = db.GqlQuery("SELECT * FROM Blog ORDER BY created DESC")
 		blogs_json =  []
 		for blog in blogs:
@@ -106,6 +107,7 @@ class BlogHandler(Handler):
 
 class BlogJsonHandler(Handler):
 	def get(self, blog_id):
+		self.response.headers['Content-Type'] = 'application/json; charset=UTF-8'
 		blog = Blog.get_by_id(int(blog_id))
 		blog_json = blog_to_json(blog)
 		self.write(json.dumps(blog_json))
@@ -251,7 +253,7 @@ class CookiesHandler(Handler):
 
 app = webapp2.WSGIApplication([
     ('/blog', MainHandler),
-    ('/blog.json', BlogsJsonHandler),
+    ('/blog/.json', BlogsJsonHandler),
     ('/blog/newpost', NewPostHandler),
     ('/blog/(\d+)', BlogHandler),
     ('/blog/(\d+).json', BlogJsonHandler),
