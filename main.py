@@ -21,10 +21,13 @@ import jinja2
 import re
 import hmac
 import random
+import logging
 import string
 import hashlib
 import json
+import datetime
  
+from google.appengine.api import memcache
 from google.appengine.ext import db
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
@@ -84,10 +87,28 @@ class User(db.Model):
 	password = db.StringProperty(required = True)
 	email = db.StringProperty()
 
+last_queried = datetime.datetime.now()
+
+def top_blogs(update = False):
+	key = 'top'
+	blogs = memcache.get(key)
+	global last_queried
+	if blogs is None or update:
+		logging.error("DB QUERY")
+		blogs = db.GqlQuery("SELECT * FROM Blog ORDER BY created DESC LIMIT 10")
+		last_queried = datetime.datetime.now()
+		seconds = 0
+		blogs = list(blogs)
+		memcache.set(key, blogs)
+	else:
+		seconds = (datetime.datetime.now() - last_queried).seconds
+
+	return blogs, seconds
+
 class MainHandler(Handler):
     def get(self):
-    	blogs = db.GqlQuery("SELECT * FROM Blog ORDER BY created DESC")
-        self.render("front.html", blogs = blogs)
+    	blogs, seconds = top_blogs()
+        self.render("front.html", blogs = blogs, seconds=seconds)
 
 class BlogsJsonHandler(Handler):
 	def get(self):
