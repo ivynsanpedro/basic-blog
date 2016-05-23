@@ -158,6 +158,7 @@ class NewPostHandler(Handler):
 			blog = Blog(subject = subject, content = content)
 			blog.put()
 			id = blog.key().id()
+			memcache.set("top", None)
 			self.redirect("/blog/%d" % id)
 		else:
 			error = "Subject and Content, please!"
