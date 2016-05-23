@@ -23,6 +23,7 @@ import hmac
 import random
 import string
 import hashlib
+import json
  
 from google.appengine.ext import db
 
@@ -55,6 +56,13 @@ def valid_pw(name, pw, h):
 	salt = h.split(',')[1]
 	return h == make_pw_hash(name, pw, salt)
 
+def blog_to_json(blog):
+	blog_json = {}
+	blog_json["content"] = blog.content
+	blog_json["subject"] = blog.subject
+	blog_json["created"] = blog.created.strftime("%a %b %d %H:%M:%S %Y")
+	return blog_json
+
 class Handler(webapp2.RequestHandler):
 	def write(self, *a, **kw):
 		self.response.out.write(*a, **kw)
@@ -81,10 +89,26 @@ class MainHandler(Handler):
     	blogs = db.GqlQuery("SELECT * FROM Blog ORDER BY created DESC")
         self.render("front.html", blogs = blogs)
 
+class BlogsJsonHandler(Handler):
+	def get(self):
+		blogs = db.GqlQuery("SELECT * FROM Blog ORDER BY created DESC")
+		blogs_json =  []
+		for blog in blogs:
+			blog_json = blog_to_json(blog)
+			blogs_json.append(blog_json)
+
+		self.write(json.dumps(blogs_json))
+
 class BlogHandler(Handler):
 	def get(self, blog_id):
 		blog = Blog.get_by_id(int(blog_id))
 		self.render("blog.html", blog = blog)
+
+class BlogJsonHandler(Handler):
+	def get(self, blog_id):
+		blog = Blog.get_by_id(int(blog_id))
+		blog_json = blog_to_json(blog)
+		self.write(json.dumps(blog_json))
 
 class NewPostHandler(Handler):
 	def get(self):
@@ -227,8 +251,10 @@ class CookiesHandler(Handler):
 
 app = webapp2.WSGIApplication([
     ('/blog', MainHandler),
+    ('/blog.json', BlogsJsonHandler),
     ('/blog/newpost', NewPostHandler),
     ('/blog/(\d+)', BlogHandler),
+    ('/blog/(\d+).json', BlogJsonHandler),
     ('/blog/signup', SignupHandler),
     ('/blog/welcome', WelcomeHandler),
     ('/blog/cookies', CookiesHandler),
