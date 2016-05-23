@@ -191,6 +191,11 @@ class LoginHandler(Handler):
 			error = "Invalid login"
 			self.render("login.html", username=username, error=error)
 
+class LogoutHandler(Handler):
+	def get(self):
+		self.response.headers.add_header('Set-Cookie', 'user_id=; Path=/')
+		self.redirect("/blog/signup")			
+
 SECRET = 'imsosecret'
 def hash_str(s):
 	return hmac.new(SECRET, s).hexdigest()
@@ -227,5 +232,6 @@ app = webapp2.WSGIApplication([
     ('/blog/signup', SignupHandler),
     ('/blog/welcome', WelcomeHandler),
     ('/blog/cookies', CookiesHandler),
-    ('/blog/login', LoginHandler)
+    ('/blog/login', LoginHandler),
+    ('/blog/logout', LogoutHandler)
 ], debug=True)
