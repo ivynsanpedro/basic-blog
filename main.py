@@ -255,7 +255,13 @@ class LoginHandler(Handler):
 class LogoutHandler(Handler):
 	def get(self):
 		self.response.headers.add_header('Set-Cookie', 'user_id=; Path=/')
-		self.redirect("/blog/signup")			
+		self.redirect("/blog/signup")
+
+class FlushHandler(Handler):
+	def get(self):
+		memcache.flush_all()
+		blogs_last_queried.clear()
+		self.redirect("/blog")
 
 SECRET = 'imsosecret'
 def hash_str(s):
@@ -296,5 +302,6 @@ app = webapp2.WSGIApplication([
     ('/blog/welcome', WelcomeHandler),
     ('/blog/cookies', CookiesHandler),
     ('/blog/login', LoginHandler),
-    ('/blog/logout', LogoutHandler)
+    ('/blog/logout', LogoutHandler),
+    ('/blog/flush', FlushHandler)
 ], debug=True)
